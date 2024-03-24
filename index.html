@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calgary Polygon Drawer</title>
+    <!-- Include Leaflet CSS -->
+    <link rel="stylesheet" href="leaflet.css" />
+
+    <link href='https://api.mapbox.com/mapbox.js/v3.3.1/mapbox.css' rel='stylesheet' /> 
+    <style>
+        #map {
+            height: 600px;
+            width: 100%;
+        }
+    </style>
+
+
+    <div id="map"></div>
+    <button id="simplifyBtn">Simplify</button>
+    <button id="removeBtn">Remove Polyline</button>
+    <!-- Date Range Picker -->
+    <div class="container mt-4">
+        <br>
+            This Web application allows the user to draw a polygon on the map by clicking
+            and can clear the polygon using the clear button, or simplify the polygon by 
+            closing the polyline to its start
+    </div>
+
+    <script src="leaflet/leaflet.js"></script>
+
+    <!-- Include Turf.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.3.0/turf.min.js"></script>
+
+    <script>
+        var map = L.map('map').setView([51.0447, -114.0719], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        var drawnPolyline = null;
+        var drawnPolylineLayer; // Define the drawnPolylineLayer variable
+        var simplifiedPolylineLayer; // Define the simplifiedPolylineLayer variable
+
+        // Event handler for map click to draw polyline
+        map.on('click', function(e) {
+            var lat = e.latlng.lat;
+            var lng = e.latlng.lng;
+            
+            if (drawnPolyline === null) {
+                drawnPolyline = turf.lineString([[lng, lat], [lng, lat]]); // Initialize with two identical points
+            } else {
+                var coordinates = drawnPolyline.geometry.coordinates;
+                coordinates.push([lng, lat]);
+                drawnPolyline = turf.lineString(coordinates);
+            }
+            
+            if (drawnPolyline.geometry.coordinates.length > 1) {
+                if (drawnPolylineLayer) {
+                    map.removeLayer(drawnPolylineLayer); // Remove existing drawnPolylineLayer
+                }
+                drawnPolylineLayer = L.geoJSON(drawnPolyline).addTo(map);
+            }
+        });
+
+        // Event handler for simplify button click
+        document.getElementById('simplifyBtn').addEventListener('click', function() {
+            if (drawnPolyline !== null) {
+                // Check if there are at least two coordinates for simplification
+                if (drawnPolyline.geometry.coordinates.length >= 2) {
+                    // Simplify the drawn polyline using Turf.js
+                    console.log(drawnPolyline.geometry.coordinates)
+                    var simplified = turf.simplify(drawnPolyline, {tolerance: .005, highQuality: true,});
+
+                    // Clear existing layers
+                    if (simplifiedPolylineLayer) {
+                        map.removeLayer(simplifiedPolylineLayer); // Remove existing simplifiedPolylineLayer
+                    }
+                    // Add simplified polyline to the map
+                    simplifiedPolylineLayer = L.geoJSON(simplified, {
+                        style: function (feature) {
+                            return { color: 'red' };
+                        }
+                    }).addTo(map);
+                    map.removeLayer(drawnPolylineLayer); // Remove drawnPolylineLayer
+                    drawnPolyline = null;
+
+                } else {
+                    alert("You need at least two points to simplify the polyline.");
+                }
+            }
+        });
+
+        // Event handler for remove polyline button click
+        document.getElementById('removeBtn').addEventListener('click', function() {
+            if (drawnPolylineLayer) {
+                map.removeLayer(drawnPolylineLayer); // Remove drawnPolylineLayer
+                drawnPolyline = null;
+            }
+            if (simplifiedPolylineLayer) {
+                map.removeLayer(simplifiedPolylineLayer); // Remove simplifiedPolylineLayer
+            }
+        });
+    </script>
+
+</html>
